@@ -1,0 +1,210 @@
+
+  AXRO/HFDFC Software System Operating Handbook                              V1.0
+    written by: Gregg Germain, SAO
+
+  The manual describes the operating procedures to be used when using
+  the AXRO Command Line Interpreter (CLI), in conjunction with the
+  Arduino Command Executive microcontroller software, to control 
+  the DFC and HFDFC mirror hardware.
+
+  This document assumes there is only one Mirror Controller
+  PC board being used.
+
+  It is strongly recommended that you read over the AD5372 Datasheet to
+  understand how the DAC chip operates, what it's transfer functions
+  are, how the offsets affect the output, etc.
+
+
+  Components:
+  -----------
+
+  1) The Mirror Control Hardware consists of:
+
+     1 to 4 Mirror Element Controller (MEC) PC boards 
+     3 MEC power supplies 
+     1 Arduino Leonardo, an Arduino power supply and USB communication port
+     1 PC or laptop
+
+
+    The PC communicates with the Controller boards via the Arduino.
+
+    It is assumed that you have loaded the PC with the Arduino IDE,
+    and the pySerial Python module for Arduino Serial Communications.
+
+    It is also assumed that you have tested the Arduino to PC
+    interface and can download and run examples such as Blink.
+
+
+  2) The Mirror Control Software consists of:
+
+     PC/Laptop Command Line Interface (CLI) - AXRO_CLI.py
+     Arduino Command Executive Sketch (CES) - AXRO_Command_Exec.ino
+        - "Sketch" is Arduino's way of describing the software you
+          download onto the Arduino.
+
+   The purpose of the CLI is to accept commands from the user, vet
+   them for legality, and if they are legal commands, send them to the
+   Arduino for execution.
+
+   The commands are vetted on the Python side because the Arduino
+   microcontroller has limited program memory. So the chore of being
+   sure that the command is legal is best done on the Python side.
+
+   This means that the Arduino software can assume that any command it
+   gets is legal and therefore executable.
+
+   The purpose of the CES is to accept the legal commands from the
+   user, execute the code necessary to carry out those commands, and
+   send any feedback back to the CLI and therefore the user.
+   To carry out those commands the executive is written to interface
+   with the MEC - Mirror Element Controller - and actually set
+   voltages on a mirror element.
+
+
+ Order of Operation:
+ -------------------
+
+  Starting up:
+    
+      When first powering up the system, ALL POWER SUPPLIES SHOULD BE
+      OFF. Follow this sequence:
+    
+      1) Plug the Arduino USB comm into your PC
+      
+      2) Plug the Arduino power supply into the Arduino but not the wall plug
+      
+      3) Plug the Power connector and Data connector from the 3 PC
+         board power supplies and the Arduino, respectively, to the
+         MEC board.
+    
+      4) Plug the connectors from the MEC board to the mirror.
+    
+      5) Turn on your PC
+      
+      6) Plug in the Arduino Power supply
+    
+      7) Turn on the 5 volt MEC board power supply
+    
+        NOTE: It's important to turn this one on first - BEFORE the
+        other two.  
+    
+      8) Turn on the other two MEC power supplies.
+    
+      9) Download the Arduino Software (AXRO_Command_Exec.ino) using the Arduino IDE.
+         
+     10) Start the python-side CLI (AXRO_CLI.py) in a window on your PC.
+    
+
+ To Shut Down:
+
+      1) Turn off all there MEC power supplies
+
+      2) Quit out of  AXRO_CLI.py
+
+      3) Power down the Arduino.
+
+
+ NOTES:  If you are leaving the system for a while but want to leave
+ it in an operational state (e.g. it's lunchtime) then it's best to
+ quit out of AXRO_CLI.py.  
+
+         If you are going to download the Sketch into the Arduino
+         again for some reason ALWAYS quit out of AXRO_CLI.py first.
+         This provides a clean cut of the Serial communications
+         interface.
+
+
+
+Operational commands:
+---------------------
+
+ These are the commands available to you on the CLI.  Refer to the
+ argument limits section below to get the type and range of the
+ inputs.
+
+      VSET <BRD>  <DAC> <CHANNEL> <VOLTAGE>   Set a voltage on the
+      	   	  		  	      specified Board, DAC and Channel
+
+      VREAD <BRD>  <DAC> <CHANNEL>            Read back a voltage on the
+      	   	  		  	      specified Board, DAC and
+      	   	  		  	      Channel
+\
+     TREAD <BRD>                              Read a board temperature
+
+     RESET <BRD>                              Reset all DACs on a
+      	   	  		  	      board. This includes
+      	   	  		  	      resetting the DAC Offsets.
+
+      GAIN <BRD> <DAC> <CHANNEL> <GAINVAL>    Set DAC Channel Gain
+                                              
+    OFFSET <BRD> <DAC> <CHANNEL> <OFFSETVAL>  Set DAC Channel Offset
+
+    DACOFF <BRD> <DAC> <GROUP> <DACOFFSETVAL> Set DAC Group offset
+  
+      FILE <filename> <delay>                 Execute the commands in a file with
+                                              a specified delay between issuance 
+                                              of each command. 
+
+    HEARTBEAT                                 Query the Arduino and get a heartbeat
+                                              response which tells you the Arduino
+                                              is communicating and the program is
+                                              running.
+ 
+                                              The response is:
+
+                                              Lock Confirmed; Beacon
+                                              Terra 1
+
+                                                 (for all you 2001 fans)
+
+
+    OPEN                                      Opens a file on your PC
+    					      into which are recorded
+    					      commands that you issue
+    					      by hand and any response
+    					      from the Arduino. You
+    					      are then prompted for:
+
+    					        - A file name
+						- A comment line to
+						  place at the top of the file.
+
+    CLOSE				      Close the file opened by
+    					      the OPEN command.
+
+    DEBUG				      Verbose responses from
+    					      the Arduino which aid in 
+					      software debugging. 
+					       - DEFAULT
+
+    NODEBUG				      Less verbose responses
+    					      from the Arduino
+
+
+    QUIT                                      Exit the CLI
+
+
+Where:
+
+<BRD>          - Board Select             [3]       (for DFC and HFDFC tests)
+
+<DAC>          - DAC Select               [0,1,2,3,4,5,6,7]  integer
+                                          
+
+<CHANNEL>      - DAC Channel              [0 → 31] integer
+
+<VOLTAGE>      - DAC Output Voltage value [-15.25v → 15.25v] float
+
+<GAINVAL>      - Channel Gain Value       [0 → 65535] integer
+
+<OFFSETVAL>    - Channel offset value     [0 → 32767] integer
+
+<DACOFFSETVAL> - DAC Group Offsets        [0 → 16383] integer
+
+<GROUP>        - DAC OFFSET Group         [0,1]
+
+<filename>     - Name of a file containing legal commands
+
+<delay>        - delay in seconds between each issuance of a 
+                 command in a command file [0 → whatever]
+
