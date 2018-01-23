@@ -34,7 +34,7 @@ lib.saturationLevel.restype=cdoub
 lib.saturationLevel.argtypes = [cpoint]
 
 #Create a global exposure time variable
-exptime = 1000 #1 msec default exposure time
+exptime = 3600 #3.6 msec default exposure time
 
 def init():
     """Initialize the connection to the WFS

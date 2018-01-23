@@ -25,7 +25,7 @@ CheckIt = CommandCheck()
 
 # Establish the connection on a specific port
 #ser = serial.Serial('/dev/ttyACM0', 9600)
-ser = serial.Serial('COM4', 9600)
+ser = serial.Serial('COM5', 9600)
 
 #  Get the heartbeat
 ser.write("HEARTBEAT")

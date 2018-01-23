@@ -41,7 +41,7 @@ def close():
 #When measuring IFs, you would call [measureIF(c,100) for c in goodcell]
 
 #Influence functions
-def measureIF(cellnum,N,filebase,volt = 5.):
+def measureIF(cellnum,N,filebase,volt = 10.):
     """
     Measure the influence function of piezo cell cellnum.
     Measure using 100 averages per measurement, and do this N times.
@@ -104,7 +104,7 @@ def meanIF(filebase):
     return res
 
 def measureHysteresisCurve(cellnum,N,filebase):
-    voltages = np.arange(0.5,5.5,0.5)
+    voltages = np.arange(0.5,10.5,1)
     #voltages = np.array([1.0,3.0,5.0])
     for volt in voltages:
         measureIF(cellnum,N,filebase + '_' + "{:2.1f}".format(volt).replace('.','p') + 'V',volt = volt)
@@ -128,7 +128,7 @@ def measChangeFromVolts(opt_volts,n,filebase = ''):
     
     # Waiting to let the cells reach equilibrium.
     print '\nWaiting for Cells To Stabilize....\n'
-    time.sleep(1) # 10
+    time.sleep(10)
     
     # Now taking the activated measurement.
     act_file = 'C:\\Users\\rallured\\Documents\\HFDFC3_IterativeCorrection\\OptVolt_Meas' + str(n) + '.has'
@@ -141,7 +141,7 @@ def measChangeFromVolts(opt_volts,n,filebase = ''):
     rel_change = wfs.processHAS(act_file,ref = ref_file,type = 'P')
     
     # And saving the measurement at the specified file path location.
-    figure_filepath = filebase + '_Figure_Iter' + str(n) + '.fits'
+    figure_filepath = filebase + '_MeasChange_Iter' + str(n) + '.fits'
     hdu = pyfits.PrimaryHDU(rel_change)
     hdu.writeto(figure_filepath,clobber = True)
     
@@ -189,7 +189,7 @@ def reshapeMeasToDistMap(figure_filepath,dist_map,mask_fraction):
     return rel_change
 
 def iterCorr(dist_map,ifs,perimeter,dx, \
-             filebase = ''):
+             filebase = '',max_volts = 10.0):
     '''
     Performs an iterative correction to the HFDFC3 mirror to converge on the best correction available to the
     distortion map provided in dist_map.
@@ -213,33 +213,42 @@ def iterCorr(dist_map,ifs,perimeter,dx, \
     mask_fraction = perimeter*2/101.6
     shademask = eva.slv.createShadePerimeter(np.shape(ifs[0]),axialFraction=mask_fraction,azFraction=mask_fraction)
 
+    # Saving the distortion map at the same format as the correction.
+    dist_map_resized = man.newGridSize(dist_map,np.shape(ifs[0]))
+    hdu = pyfits.PrimaryHDU(dist_map_resized)
+    hdu.writeto(filebase + '_DistortionToCorrect_Iter' + str(n) + '.fits',clobber = True)
+
     # Performing the first computation of the correction to the distortion map,
     # and saving the first set of optimal voltages. "correction" will be masked,
     # not have best fit cylinder removed, be masked by the shademask, and have
     # shape equal to dist_map.
     correction,opt_volts = eva.correctHFDFC3(dist_map,ifs,shade = shademask,dx = dx,smax = 1.0)
     orig_volts = np.copy(opt_volts)
-    
+
+    # Saving the optimal voltages.
     np.savetxt(filebase + '_OptVolts_Iter' + str(n) + '.txt',opt_volts)
+    
+    # Saving the computed correction.
     hdu = pyfits.PrimaryHDU(correction)
     hdu.writeto(filebase + '_Correction_Iter' + str(n) + '.fits',clobber = True)
     print 'CORRECTION CALCULATED'
     
     # Measuring the relative change induced by applying the calculated set of optimal voltages.
-    figure_filepath = measChangeFromVolts(opt_volts*5.0,n,filebase)
+    figure_filepath = measChangeFromVolts(opt_volts*max_volts,n,filebase)
     
     # Reading the measured change resulting from that voltage application, processing the measurement,
     # and scaling it to the size of dist_map.
     rel_change = reshapeMeasToDistMap(figure_filepath,dist_map,mask_fraction)
     first_meas_change = np.copy(rel_change)
+    
     print 'RELATIVE CHANGE MEASURED'
     # Entering the iterative state while the criteria are unfulfilled. 
-    while n < 4:
+    while n < 5:
         n = n + 1
         residual = dist_map + rel_change
         
         hdu = pyfits.PrimaryHDU(residual)
-        hdu.writeto(filebase + '_Residual_Iter' + str(n) + '.fits',clobber = True)
+        hdu.writeto(filebase + '_DistortionToCorrect_Iter' + str(n) + '.fits',clobber = True)
     
         iter_corr, volt_adjust = eva.correctHFDFC3(residual,ifs,shade = shademask,dx = dx,bounds = make_bounds(opt_volts))
     
@@ -250,13 +259,12 @@ def iterCorr(dist_map,ifs,perimeter,dx, \
         np.savetxt(filebase + '_OptVolts_Iter' + str(n) + '.txt',opt_volts)
         
         # Computing the first set of optimal voltages:        
-        iter_figure_filepath = measChangeFromVolts(opt_volts*5.0,n,filebase)
+        iter_figure_filepath = measChangeFromVolts(opt_volts*max_volts,n,filebase)
         rel_change = reshapeMeasToDistMap(iter_figure_filepath,dist_map,mask_fraction)
         
     best_fit_distortion = np.copy(rel_change)
     
     return dist_map,correction,orig_volts,first_meas_change,residual,iter_corr,volt_adjust,rel_change
-    #return opt_volts,iter_corr,volt_adjust,
 
     
 #Need to perform iterative correction

@@ -1,1 +1,0 @@
-date, time, param (don't know what this is), groove dimension (microns), dispersion dimension (microns), intensity (not used), height (microns), temperature
