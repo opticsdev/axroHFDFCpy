@@ -126,14 +126,18 @@ def measChangeFromVolts(opt_volts,n,filebase = ''):
     #Set optimal cell voltages
     ax.setVoltArr(opt_volts)
     
-    # Waiting to let the cells reach equilibrium.
+    # Waiting to let the cells reach equilibrium -- probably not needed.
     print '\nWaiting for Cells To Stabilize....\n'
-    time.sleep(10)
+    time.sleep(2)
+    
+    actual_volts = ax.readVoltArr()
+     
+    time.sleep(2)
     
     # Now taking the activated measurement.
     act_file = 'C:\\Users\\rallured\\Documents\\HFDFC3_IterativeCorrection\\OptVolt_Meas' + str(n) + '.has'
     wfs.takeWavefront(100, filename = act_file)
-    
+
     # And returning to the grounded state for safety.
     ax.ground()
     
@@ -144,6 +148,8 @@ def measChangeFromVolts(opt_volts,n,filebase = ''):
     figure_filepath = filebase + '_MeasChange_Iter' + str(n) + '.fits'
     hdu = pyfits.PrimaryHDU(rel_change)
     hdu.writeto(figure_filepath,clobber = True)
+    
+    np.savetxt(filebase + '_MeasVoltApplied_Iter' + str(n) + '.txt',actual_volts)
     
     # Returning the file path location for easy reading with the metrology suite.
     return figure_filepath
