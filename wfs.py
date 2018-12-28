@@ -12,7 +12,7 @@ import pdb
 dlldir = 'C:\\Users\\WFS\\Documents\\Visual Studio 2015\\Projects\\WFS3\\Debug'
 cwd = os.getcwd()
 os.chdir(dlldir)
-lib = npct.load_library('WFS3','.')
+lib = npct.load_library('WFS3', '.')
 os.chdir(cwd)
 
 #Ctypes (for convenience)
@@ -25,7 +25,7 @@ cll = ctypes.c_longlong
 cdoub = ctypes.c_double
 
 #Set up functions
-lib.processFile.restype=None
+lib.processFile.restype = None
 lib.processFile.argtypes = [array_1d_double,cpoint,cpoint,cbool,cbool,\
                             cbool,cbool,cchar]
 lib.takeWavefront.restype=cdoub
@@ -44,7 +44,6 @@ def init():
     or wavefronts
     """
     lib.init()
-    return
 
 def close():
     """Close the connection to the WFS
@@ -52,12 +51,11 @@ def close():
     it won't break anything not to
     """
     lib.close()
-    return
 
 def getSat(filename):
     return lib.saturationLevel(filename)
 
-def processHAS(filename,ref=None,dbl=True,nb=True,notilt=True,type='P'):
+def processHAS(filename, ref=None, dbl=True, nb=True, notilt=True, type='P'):
     """
     Load a .has file and apply the desired processing
     If ref is not none, the .has file pointed to will be
@@ -71,11 +69,11 @@ def processHAS(filename,ref=None,dbl=True,nb=True,notilt=True,type='P'):
     """
     slopes = np.zeros((128*128))
     if ref is None:
-        ref,flag='',False
+        ref,flag = '', False
     else:
         flag=True
     lib.processFile(slopes,filename,ref,flag,dbl,nb,notilt,type)
-    return slopes.reshape((128,128))
+    return slopes.reshape((128, 128))
 
 def takeWavefront(num,filename=None,bg=None,img=None):
     """
@@ -91,30 +89,30 @@ def takeWavefront(num,filename=None,bg=None,img=None):
     """
     global exptime
     if bg is None:
-        flag=False
+        flag = False
     else:
-        flag=True
+        flag = True
     if img is None:
-        iflag=False
+        iflag = False
     else:
-        iflag=True
+        iflag = True
     if filename is None:
         flag2 = False
     else:
         flag2 = True
-    print exptime
-    cursat =  lib.takeWavefront(int(num),int(exptime),filename,flag2,\
-                                bg,flag,img,iflag)
-    print cursat
+    print(exptime)
+    cursat = lib.takeWavefront(int(num), int(exptime), filename,flag2,\
+                                bg, flag, img, iflag)
+    print(cursat)
 
     if (cursat < .6) or (cursat > .7):
-        print 'Setting exposure'
+        print('Setting exposure')
         setExposure(bg=bg)
-        cursat = takeWavefront(num,filename=filename,bg=bg,img=img)
+        cursat = takeWavefront(num, filename=filename, bg=bg, img=img)
 
     return cursat
 
-def takeImage(num,exp=exptime,filename=None,bg=None):
+def takeImage(num, exp=exptime, filename=None, bg=None):
     """
     Takes a wavefront image and saves the result to a .hmg file.
     For optional BG subtraction, set bg to a .hmg filename
@@ -124,15 +122,15 @@ def takeImage(num,exp=exptime,filename=None,bg=None):
     """
     global exptime
     if bg is None:
-        flag=False
+        flag = False
     else:
-        flag=True
+        flag = True
     if filename is None:
-        flag2=False
+        flag2 = False
     else:
-        flag2=True
-    print exp
-    return lib.takeImage(int(num),int(exp),filename,flag2,bg,flag)
+        flag2 = True
+    print(exp)
+    return lib.takeImage(int(num), int(exp), filename, flag2, bg, flag)
 
 def setExposure(bg=None):
     """
@@ -145,17 +143,17 @@ def setExposure(bg=None):
     """
     global exptime
     #Get current saturation level
-    cursat = takeImage(1,exptime,'',bg=bg)
-    print cursat, exptime
+    cursat = takeImage(1, exptime, '', bg=bg)
+    print(cursat, exptime)
     #Determine course of action
     if (cursat > .6) & (cursat < .7):
         return exptime
-    elif cursat >= 1:
+
+    if cursat >= 1:
         exptime = exptime / 2.
-        return setExposure(bg=bg)
     else:
         exptime = exptime * .675/cursat
-        return setExposure(bg=bg)
+    return setExposure(bg=bg)
 
 def testRepeatability(nb,N):
     filenames = ['Repeatability%04i.has' % i for i in range(N)]
@@ -169,10 +167,10 @@ def convertRepeatability():
     filenames.sort()
 
     for i in range(np.size(filenames)-1):
-        slopesx = processHAS(filenames[i+1],ref=filenames[i],type='X')
-        slopesy = processHAS(filenames[i+1],ref=filenames[i],type='Y')
-        pyfits.writeto('SlopesY%04i.fits' % i,slopesy,clobber=True)
-        pyfits.writeto('SlopesX%04i.fits' % i,slopesx,clobber=True)
+        slopesx = processHAS(filenames[i+1], ref=filenames[i], type='X')
+        slopesy = processHAS(filenames[i+1], ref=filenames[i], type='Y')
+        pyfits.writeto('SlopesY%04i.fits' % i, slopesy, clobber=True)
+        pyfits.writeto('SlopesX%04i.fits' % i, slopesx, clobber=True)
     return
 
 def repeatability(nb,N):

@@ -12,6 +12,7 @@ import serial
 from AXRO_Command.CommandCheck import *
 from AXRO_Command.ProcessCommandFile import *
 from AXRO_Command.VetTheCommand_V3_0.py import *
+import config
 
 
 # execfile("CommandCheck.py")
@@ -30,13 +31,12 @@ file_open_flag = False
 CheckIt = CommandCheck()
 
 # Establish the connection on a specific port
-#ser = serial.Serial('/dev/ttyACM0', 9600)
-ser = serial.Serial('COM5', 9600)
+ser = config.ser
 
 #  Get the heartbeat
 ser.write("HEARTBEAT")
 hb_response = ser.readline()
-print hb_response
+print(hb_response)
 
 # Get a user command
 command_line = raw_input("Gimme a full command: ")
@@ -54,10 +54,10 @@ while command.upper() != "QUIT":
     # wait for the response. Eventually we will build in a
     # timeout here.
     elif command.upper() == "HEARTBEAT":
-        print "    Sending Heartbeat to the ARDUINO", command_line
+        print("\tSending Heartbeat to the ARDUINO", command_line)
         ser.write(command_line.upper().encode())
         cmd_echo = ser.readline()
-        print "Board Response is: ", cmd_echo
+        print("Board Response is: ", cmd_echo)
 
     elif command.upper() == "OPEN":
         filename = raw_input("Give me the name of the output file: ")
@@ -67,33 +67,33 @@ while command.upper() != "QUIT":
         file_open_flag = True
 
     elif command.upper() == "CLOSE":
-        if file_open_flag == True:
-            outfile.close();
+        if file_open_flag is True:
+            outfile.close()
             file_open_flag = False
 
     elif command.upper() == "DEBUG":
         ser.write(command_line.upper().encode())
         cmd_echo = ser.readline()
-        print "Board Response is: ", cmd_echo
+        print("Board Response is: ", cmd_echo)
 
     elif command.upper() == "NODEBUG":
         ser.write(command_line.upper().encode())
         cmd_echo = ser.readline()
-        print "Board Response is: ", cmd_echo
+        print("Board Response is: ", cmd_echo)
 
     else:
         # If this is a legal command........
-        if (VetTheCommand(CheckIt, command_line.upper())):
+        if VetTheCommand(CheckIt, command_line.upper()) is True:
             #.... then send it to the Arduino
             #print "    Legal Command - Sending to the ARDUINO", command_line
             ser.write(command_line.upper().encode())
             cmd_echo = ser.readline()
-            print "Board Response is: ", cmd_echo
+            print("Board Response is: ", cmd_echo)
             if file_open_flag == True:
                 Write_File(outfile, command_line, cmd_echo)
 
         else:
-            print "Unauthorized command IGNORING"
+            print("Unauthorized command IGNORING")
             #ser.write(command_line.upper())
             #cmd_echo = ser.readline()
             #print "Board Response is: ", cmd_echo
@@ -110,4 +110,4 @@ ser.write(command_line.upper().encode())
 # close down the serial line from this end
 ser.close()
 
-print "Ok then bye for now"
+print("Ok then bye for now")

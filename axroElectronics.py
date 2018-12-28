@@ -1,11 +1,11 @@
 #!/usr/bin/env python2.7
 
 import numpy as np
-import serial
-import os
-from AXRO_Command.CommandCheck import *
-from AXRO_Command.ProcessCommandFile import *
-from AXRO_Command.VetTheCommand_V3_0.py import *
+import config
+# import os
+# from AXRO_Command.CommandCheck import CommandCheck
+# from AXRO_Command.ProcessCommandFile import ProcessCommandFile
+#from AXRO_Command.VetTheCommand_V3_0.py import *
 
 ########
 # Top level settings for axroElectronics.
@@ -18,11 +18,11 @@ cellmap = np.array([0,1,2,3,4,5,6,7,32,33,34,35,36,37,\
            80,81,82,83,84,85,86,87,112,113,114,115,116,117,118,119,\
            72,73,74,75,76,104,105,106,107,108,109,110,111,\
            88,89,90,91,92,93,94,95,120,121,122,123,124])
-board_num = 1
-volt_max = 10.0
 
-#Establish the serial connection
-ser = serial.Serial('COM5', 9600)
+# Import Globals from config.py
+volt_max = config.volt_max
+board_num = config.board_num
+ser = config.ser
 
 def convChan(chan):
     """
@@ -32,7 +32,7 @@ def convChan(chan):
     """
     dac = int(chan) / 32
     channel = int(chan) % 32
-    return dac,channel
+    return dac, channel
 
 def echo():
     """
@@ -40,31 +40,31 @@ def echo():
     Print the response, also return the response as a string.
     """
     cmd_echo = ser.readline()
-    print "Board Response is: ", cmd_echo
+    print("Board Response is: ", cmd_echo)
     return cmd_echo
 
-def setChan(chan,volt):
+def setChan(chan, volt=0):
     """
     Convert the channel number into board format and then issue
     command to set voltage.
     Limit of <= 5 V is encoded into this function.
     """
     if volt <= volt_max and volt >= 0.:
-        dac,channel = convChan(chan)
-        cstr = 'VSET %i %i %i %f' % (board_num,dac,channel,volt)
+        dac, channel = convChan(chan)
+        cstr = 'VSET %i %i %i %f' % (board_num, dac, channel, volt)
         ser.write(cstr.encode())
         echo()
     else:
-        print 'Voltage out of bounds!'
-    return None
+        print('Voltage out of bounds!')
+
 
 def readChan(chan):
     """
     Convert channel from 0-112 into proper DAC and channel number
     Then issue read command and parse voltage from echo.
     """
-    dac,channel = convChan(chan)
-    cstr = 'VREAD %i %i %i' % (board_num,dac,channel)
+    dac, channel = convChan(chan)
+    cstr = 'VREAD %i %i %i' % (board_num, dac, channel)
     ser.write(cstr.encode())
     s = echo()
     return float(s.split()[-1])
@@ -75,16 +75,14 @@ def close():
     """
     ser.write('QUIT'.encode())
     ser.close()
-    return None
 
 #Define higher level functions for interacting with piezo mirror
 def ground():
     """
     Set all channels to zero volts
     """
-    for c in range(32*4):
-        setChan(c,0.)
-    return None
+    for c in range(len(cellmap)):
+        setChan(c, 0.0)
 
 def setVoltArr(voltage):
     """
@@ -92,15 +90,13 @@ def setVoltArr(voltage):
     The indices correspond to piezo cell number.
     """
     for c in range(len(cellmap)):
-        setChan(cellmap[c],voltage[c])
-    return None
+        setChan(cellmap[c], voltage[c])
 
-def setVoltChan(chan,volt):
+def setVoltChan(chan, volt=0):
     """
     Set individual piezo cell, channel corresponds to piezo cell number
     """
-    setChan(cellmap[chan-1],volt)
-    return None
+    setChan(cellmap[chan-1], volt)
 
 def readVoltArr():
     """
@@ -109,7 +105,7 @@ def readVoltArr():
     """
     v = np.array([])
     for c in range(len(cellmap)):
-        v = np.append(v,readChan(cellmap[c]))
+        v = np.append(v, readChan(cellmap[c]))
     return v
 
 def readVoltChan(chan):
@@ -118,7 +114,7 @@ def readVoltChan(chan):
     """
     return readChan(cellmap[chan-1])
 
-def init(board_num = board_num):
+def init(board_num=board_num):
     """
     Change to software directory and run initialization script.
     """
@@ -136,11 +132,3 @@ def init(board_num = board_num):
         echo()
 
     ground()
-    return
-
-#def init():
-#    """
-#    Change to software directory and run initialization script.
-#    """
-#    ProcessCommandFile(CommandCheck(),arddir+'SetUp_DACOFF.txt',0)
-#    return None

@@ -1,12 +1,12 @@
 #!/usr/bin/env python2.7
 
-import numpy as np
 import serial
 import time
-import os
-from AXRO_Command.CommandCheck import *
-from AXRO_Command.ProcessCommandFile import *
-from AXRO_Command.VetTheCommand_V3_0.py import *
+#import os
+import numpy as np
+from AXRO_Command.CommandCheck import CommandCheck
+from AXRO_Command.ProcessCommandFile import ProcessCommandFile
+#from AXRO_Command.VetTheCommand_V3_0.py import *
 
 board_num = 1
 verbose = True
@@ -23,7 +23,7 @@ def convChan(chan):
     """
     dac = int(chan) / 32
     channel = int(chan) % 32
-    return dac,channel
+    return dac, channel
 
 def echo():
     """
@@ -32,15 +32,14 @@ def echo():
     """
     cmd_echo = ser.readline()
     if verbose:
-        print "Board Response is: ", cmd_echo
+        print("Board Response is: ", cmd_echo)
     return cmd_echo
 
 def encoded_init():
     """
     Change to software directory and run initialization script.
     """
-    ProcessCommandFile(CommandCheck(),arddir+'SetUp_DACOFF_FullBoard3.txt',0)
-    return None
+    ProcessCommandFile(CommandCheck(), 'SetUp_DACOFF.txt', 0)
 
 def setChan(chan,volt):
     """
@@ -54,8 +53,7 @@ def setChan(chan,volt):
         ser.write(cstr.encode())
         echo()
     else:
-        print 'Voltage out of bounds!'
-    return None
+        print('Voltage out of bounds!')
 
 def readChan(chan):
     """
@@ -74,7 +72,6 @@ def close():
     """
     ser.write('QUIT'.encode())
     ser.close()
-    return None
 
 #Define higher level functions for interacting with piezo mirror
 def ground():
@@ -82,8 +79,7 @@ def ground():
     Set all channels to zero volts
     """
     for c in range(256):
-        setChan(c,0.0)
-    return None
+        setChan(c, 0.0)
 
 def setVoltArr(voltage):
     """
@@ -91,15 +87,14 @@ def setVoltArr(voltage):
     The indices correspond to piezo cell number.
     """
     for c in range(256):
-        setChan(cellmap[c],voltage[c])
-    return None
+        setChan(cellmap[c], voltage[c])
+
 
 def setVoltChan(chan,volt):
     """
     Set individual piezo cell, channel corresponds to piezo cell number
     """
-    setChan(cellmap[chan],volt)
-    return None
+    setChan(cellmap[chan], volt)
 
 def readVoltArr():
     """
@@ -117,7 +112,7 @@ def readVoltChan(chan):
     """
     return readChan(cellmap[chan])
 
-def init(board_num = board_num):
+def init(board_num=board_num):
     """
     Change to software directory and run initialization script.
     """
@@ -135,15 +130,16 @@ def init(board_num = board_num):
         echo()
 
     ground()
-    return None
 
-def test_board(tvolts = [0,-10,-1,1,10],header = arddir + '180110_Board2_Retest_'):
+def test_board(tvolts=None, header='180110_Board2_Retest_'):
+    if tvolts is None:
+        tvolts = [0, -10, -1, 1, 10]
     ground()
 
     for volt in tvolts:
         ground()
-        setVoltArr(np.ones(256)*volt)
+        setVoltArr(np.ones(256) * volt)
         rvolts = readVoltArr()
-        np.savetxt(header + str(volt) + 'V_ReadResponse.txt',rvolts)
-        print 'Tested ' + str(volt) + 'V, Sleeping Briefly....'
+        np.savetxt(header + str(volt) + 'V_ReadResponse.txt', rvolts)
+        print('Tested ' + str(volt) + 'V, Sleeping Briefly....')
         time.sleep(10)
