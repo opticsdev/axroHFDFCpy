@@ -1,13 +1,14 @@
 #!/usr/bin/env python2.7
 
 import numpy as np
-import matplotlib.pyplot as plt
+import glob
 import time
 import wfs
+import matplotlib.pyplot as plt
 import axroElectronics as ax
 import astropy.io.fits as pyfits
 
-import pdb
+#import pdb
 
 import axroOptimization.evaluateMirrors as eva
 import utilities.imaging.man as man
@@ -19,7 +20,7 @@ def axInit():
     to be done every time this module is reloaded.
     """
     ax.init()
-    return None
+
 
 def wfsInit():
     """
@@ -29,7 +30,6 @@ def wfsInit():
     """
     wfs.init()
     wfs.setExposure()
-    return None
 
 def close():
     """
@@ -37,7 +37,6 @@ def close():
     """
     wfs.close()
     ax.close()
-    return None
 
 #Good cell map, list of good cells, where each element is cellnum
 #When measuring IFs, you would call [measureIF(c,100) for c in goodcell]
@@ -54,9 +53,9 @@ def measureIF(cellnum,N,filebase,volt = 10.):
     filebase+'_%03i.fits'
     """
     num = 100
-    sy = np.zeros((N,128,128))
-    sx = np.zeros((N,128,128))
-    p = np.zeros((N,128,128))
+    sy = np.zeros((N, 128, 128))
+    sx = np.zeros((N, 128, 128))
+    p = np.zeros((N, 128, 128))
     for i in range(N):
         #Ensure all cells are grounded
         ax.ground()
@@ -89,7 +88,7 @@ def measureIF(cellnum,N,filebase,volt = 10.):
     pyfits.writeto('%s_SX_%03i.fits' % (filebase,cellnum),sx, clobber = True)
     pyfits.writeto('%s_P_%03i.fits' % (filebase,cellnum),p, clobber = True)
 
-    return sy,sx,p
+    return sy, sx, p
 
 def meanIF(filebase):
     """
@@ -98,26 +97,26 @@ def meanIF(filebase):
     Do this for all IF files that start with filebase.
     Ex. ifs = meanIF('170601_IFs')
     """
-    files = glob.glob(filebase+'*')
-    res = np.zeros((len(files),128,128))
+    files = glob.glob(filebase + '*')
+    res = np.zeros((len(files), 128, 128))
     for i in range(len(files)):
-        d = pyfits.getdata(files[i])
-        res[i] = np.mean(d,axis=0)
+        data = pyfits.getdata(files[i])
+        res[i] = np.mean(data, axis=0)
     return res
 
 def measureHysteresisCurve(cellnum,N,filebase):
-    voltages = np.arange(0.5,10.5,1)
+    voltages = np.arange(0.5, 10.5, 1)
     #voltages = np.array([1.0,3.0,5.0])
     for volt in voltages:
-        measureIF(cellnum,N,filebase + '_' + "{:2.1f}".format(volt).replace('.','p') + 'V',volt = volt)
+        measureIF(cellnum, N, filebase + '_' + "{:2.1f}".format(volt).replace('.', 'p') + 'V', volt=volt)
 
-def collectHysteresisData(filebase,cellnums = range(3,112,10),N = 10):
+def collectHysteresisData(filebase, cellnums=range(3,112,10), N=10):
     for cellnum in cellnums:
         measureHysteresisCurve(cellnum,N,filebase)
 
 
 ########################
-def measChangeFromVolts(opt_volts,n,filebase = ''):
+def measChangeFromVolts(opt_volts, n, filebase=''):
     # First grounding everything on HFDFC3.
     ax.ground()
 
@@ -138,20 +137,20 @@ def measChangeFromVolts(opt_volts,n,filebase = ''):
 
     # Now taking the activated measurement.
     act_file = 'C:\\Users\\rallured\\Documents\\HFDFC3_IterativeCorrection\\OptVolt_Meas' + str(n) + '.has'
-    wfs.takeWavefront(100, filename = act_file)
+    wfs.takeWavefront(100, filename=act_file)
 
     # And returning to the grounded state for safety.
     ax.ground()
 
     # Computing the relative change from the activated state to the ground state.
-    rel_change = wfs.processHAS(act_file,ref = ref_file,type = 'P')
+    rel_change = wfs.processHAS(act_file, ref = ref_file, type = 'P')
 
     # And saving the measurement at the specified file path location.
     figure_filepath = filebase + '_MeasChange_Iter' + str(n) + '.fits'
     hdu = pyfits.PrimaryHDU(rel_change)
     hdu.writeto(figure_filepath,clobber = True)
 
-    np.savetxt(filebase + '_MeasVoltApplied_Iter' + str(n) + '.txt',actual_volts)
+    np.savetxt(filebase + '_MeasVoltApplied_Iter' + str(n) + '.txt', actual_volts)
 
     # Returning the file path location for easy reading with the metrology suite.
     return figure_filepath
@@ -271,9 +270,9 @@ def iterCorr(dist_map,ifs,perimeter,dx, \
         iter_figure_filepath = measChangeFromVolts(opt_volts*max_volts, n, filebase)
         rel_change = reshapeMeasToDistMap(iter_figure_filepath, dist_map, mask_fraction)
 
-    best_fit_distortion = np.copy(rel_change)
+    # best_fit_distortion = np.copy(rel_change)
 
-    return dist_map,correction,orig_volts,first_meas_change,residual,iter_corr,volt_adjust,rel_change
+    return dist_map, correction, orig_volts, first_meas_change, residual, iter_corr, volt_adjust, rel_change
 
 
 #Need to perform iterative correction

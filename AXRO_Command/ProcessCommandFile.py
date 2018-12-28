@@ -2,7 +2,9 @@
 from time import sleep
 import pdb
 import serial
+# import sys
 from .VetTheCommand_V3_0 import VetTheCommand
+from .. import config
 #-------------------------------------------------------------------------------
 #
 #  ProcessCommandFile - Open the file specified in the argument list, read and
@@ -10,7 +12,7 @@ from .VetTheCommand_V3_0 import VetTheCommand
 #                delay of  cmd_delay seconds in between
 #-------------------------------------------------------------------------------
 def ProcessCommandFile(CheckIt, filespec, cmd_delay):
-    ser = serial.Serial('COM5', 9600)
+    ser = config.ser
     cmdfile = open(filespec, "r")
 
     # Now process each command
