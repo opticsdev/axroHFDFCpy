@@ -1,7 +1,9 @@
-from numpy import *
-import matplotlib.pyplot as plt
+#!/usr/bin/env python2.7
+""" Setup functions for mapping the HFDFC actuators"""
+import numpy as np
 
-ex_volts = arange(1,113)
+
+ex_volts = np.arange(1,113)
 cell_map = array([
                 [57,58,59,60,3,2,1],
                 [61,62,63,7,6,5,4],
@@ -135,15 +137,15 @@ hfdfc_cell_dict = {
  111: (15, 1),
  112: (15, 0)}
 
-def mapToCells(arr,cell_dict = hfdfc_cell_dict):
-	output = empty((16,7))
-	output[:] = NaN
-	
-	if len(arr) != 112:
-		print 'Mismatched dimensions!'
-		return output
-	else:
-		for ind in arange(112):
-			output[cell_dict[ind + 1][0],cell_dict[ind + 1][1]] = arr[ind]
-		return output
-		
+
+def mapToCells(arr, cell_dict=hfdfc_cell_dict):
+    output = np.empty((16, 7))
+    output[:] = np.nan
+
+    if len(arr) != 112:
+        print('Mismatched dimensions!')
+
+    else:
+        for ind in np.arange(112):
+            output[cell_dict[ind + 1][0], cell_dict[ind + 1][1]] = arr[ind]
+    return output

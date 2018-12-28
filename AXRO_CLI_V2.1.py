@@ -1,3 +1,5 @@
+#!/usr/bin/env python2.7
+
 ###############################################################
 #
 # AXRO_CLI_V2.0.py - This version uses the CommandCheck Class
@@ -7,10 +9,14 @@
 
 from time import sleep
 import serial
+from AXRO_Command.CommandCheck import *
+from AXRO_Command.ProcessCommandFile import *
+from AXRO_Command.VetTheCommand_V3_0.py import *
 
-execfile("CommandCheck.py")
-execfile("VetTheCommand_V3.0.py")
-execfile("ProcessCommandFile.py")
+
+# execfile("CommandCheck.py")
+# execfile("VetTheCommand_V3.0.py")
+# execfile("ProcessCommandFile.py")
 
 def Write_File(outfile, command_line, response):
     outfile.write("\n\n"+command_line+"\n")
@@ -39,13 +45,13 @@ command = split_command[0].upper().encode()
 
 # Do until the user Control-C's out
 while command.upper() != "QUIT":
-    
+
     # If the command was "FILE" then process the command file
     if command.upper() == "FILE":
         ProcessCommandFile(CheckIt, split_command[1], split_command[2])
 
-    # Check to see if the command is HEARTBEAT. If it is, 
-    # wait for the response. Eventually we will build in a 
+    # Check to see if the command is HEARTBEAT. If it is,
+    # wait for the response. Eventually we will build in a
     # timeout here.
     elif command.upper() == "HEARTBEAT":
         print "    Sending Heartbeat to the ARDUINO", command_line
@@ -91,7 +97,7 @@ while command.upper() != "QUIT":
             #ser.write(command_line.upper())
             #cmd_echo = ser.readline()
             #print "Board Response is: ", cmd_echo
-    
+
     # Get a new command
     command_line = raw_input("Gimme a command: ")
     split_command = command_line.split()

@@ -1,12 +1,11 @@
+#!/usr/bin/env python2.7
+
 import numpy as np
 import serial
 import os
-
-#Load Gregg's functions
-arddir = u'C:\\Users\\rallured\\Dropbox\\AXRO\\Arduino\\AXROMirrorControlSoftware\\'
-execfile(arddir+"CommandCheck.py")
-execfile(arddir+"VetTheCommand_V3.0.py")
-execfile(arddir+"ProcessCommandFile.py")
+from AXRO_Command.CommandCheck import *
+from AXRO_Command.ProcessCommandFile import *
+from AXRO_Command.VetTheCommand_V3_0.py import *
 
 ########
 # Top level settings for axroElectronics.
@@ -69,7 +68,7 @@ def readChan(chan):
     ser.write(cstr.encode())
     s = echo()
     return float(s.split()[-1])
-    
+
 def close():
     """
     Close the serial connection to the Arduino
@@ -126,12 +125,12 @@ def init(board_num = board_num):
     cstr = 'RESET %i' % (board_num)
     ser.write(cstr.encode())
     echo()
-    
+
     for dac in range(8):
         cstr = 'DACOFF %i %i 0 8192' % (board_num,dac)
         ser.write(cstr.encode())
         echo()
-        
+
         cstr = 'DACOFF %i %i 1 8192' % (board_num,dac)
         ser.write(cstr.encode())
         echo()

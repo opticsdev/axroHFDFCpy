@@ -1,3 +1,5 @@
+#!/usr/bin/env python2.7
+
 import numpy.ctypeslib as npct
 import ctypes
 import numpy as np
@@ -172,7 +174,7 @@ def convertRepeatability():
         pyfits.writeto('SlopesY%04i.fits' % i,slopesy,clobber=True)
         pyfits.writeto('SlopesX%04i.fits' % i,slopesx,clobber=True)
     return
-        
+
 def repeatability(nb,N):
     sat = testRepeatability(nb,N)
     convertRepeatability()
@@ -190,7 +192,7 @@ def getdata(f):
 
 def rms(x):
     return np.sqrt(np.nanmean((x-np.nanmean(x))**2))
-        
+
 
 #Test script
 if __name__ == "__main__":
@@ -226,4 +228,3 @@ if __name__ == "__main__":
 ##    lib.init()
 ##    lib.takeWavefront(1,1000,"DLLTest.has","",False)
 ##    lib.close()
-    
