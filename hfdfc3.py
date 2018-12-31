@@ -1,5 +1,5 @@
 #!/usr/bin/env python2.7
-
+# Legacy from optimization setups on HFDFC3
 import numpy as np
 import glob
 import time

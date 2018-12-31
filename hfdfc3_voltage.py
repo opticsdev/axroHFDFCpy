@@ -1,15 +1,18 @@
 #!/usr/bin/env python2.7
-
-import numpy as np
+"""
+For testing & calibration of higher voltages per acturator up to 15V
+"""
 import glob
 import os
 import time
-import wfs
-import matplotlib.pyplot as plt
-import axroElectronics as ax
+import datetime
+import h5py
+#import matplotlib.pyplot as plt
+import numpy as np
 import astropy.io.fits as pyfits
 import config
-
+import wfs
+import axroElectronics as ax
 #import pdb
 
 # import axroOptimization.evaluateMirrors as eva
@@ -46,20 +49,21 @@ def close():
 #When measuring IFs, you would call [measureIF(c,100) for c in goodcell]
 
 #Influence functions
-def measureIF(cellnum, N, filebase, volt):
+def measureIF(cellnum, N=1, filebase='', volt=0, ftype=None):
     """
     Measure the influence function of piezo cell cellnum.
     Measure using 100 averages per measurement, and do this N times.
     Save the results in a 3D fits file of shape (N,128,128).
     These results may then be postprocessed into an influence function
-    fits file.
-    Resulting fits files will be saved as:
-    filebase+'_%03i.fits'
+    fits or h5 file.
+
     """
     num = 100
     sy = np.zeros((N, 128, 128))
     sx = np.zeros((N, 128, 128))
     p = np.zeros((N, 128, 128))
+
+    day = datetime.date.today().strftime('%y%m%d')  # capture date for filename encoding
     for i in range(N):
         #Ensure all cells are grounded
         ax.ground()
@@ -87,12 +91,31 @@ def measureIF(cellnum, N, filebase, volt):
         sx[i] = wfs.processHAS(act_file, ref=ref_file, type='X')
         p[i] = wfs.processHAS(act_file, ref=ref_file, type='P')
 
+    # Write h5 file
+    if ftype == 'h5':
+        with h5py.File(os.path.join(filebase, day + '_IFdata'), 'a') as fin:
+            group = fin.create_group('Actuator %s' % cellnum)
+            group.create_dataset('SY', data=sy)
+            group.create_dataset('SX', data=sx)
+            group.create_dataset('P', data=p)
+            group.attr['actuator'] = cellnum
+
     #Write fits file
-    pyfits.writeto('%s_SY_%03i.fits' % (filebase, cellnum), sy, clobber=True)
-    pyfits.writeto('%s_SX_%03i.fits' % (filebase, output_verify='exception'cellnum), sx, clobber=True)
-    pyfits.writeto('%s_P_%03i.fits' % (filebase, cellnum), p, clobber=True)
+    elif ftype == 'fits':
+        pyfits.writeto('%s_SY_%03i.fits' % (filebase, cellnum), sy, overwrite=True)
+        pyfits.writeto('%s_SX_%03i.fits' % (filebase, cellnum), sx, output_verify='exception', overwrite=True)
+        pyfits.writeto('%s_P_%03i.fits' % (filebase, cellnum), p, overwrite=True)
 
     return sy, sx, p
+
+def compileIF(filebase='', vmax=10.0, ftype='h5'):
+    """
+    Runs through and applied voltage to each actuator in the AXRO board saving all data into one big file
+    """
+    for idx in ax.cellmap:
+        sy, sx, p = measureIF(idx, N=1, volt=vmax, filebase=filebase, ftype=ftype)
+
+
 
 def meanIF(filebase):
     """
@@ -116,7 +139,7 @@ def measureHysteresisCurve(cellnum, N, filebase):
 
 def collectHysteresisData(filebase, cellnums=range(3, 112, 10), N=10):
     for cellnum in cellnums:
-        measureHysteresisCurve(cellnum,N,filebase)
+        measureHysteresisCurve(cellnum, N, filebase)
 
 
 ########################
@@ -125,8 +148,8 @@ def measChangeFromVolts(opt_volts, n, filebase=''):
     ax.ground()
 
     # Now taking the grounded reference measurement.
-    ref_file = 'C:\\Users\\rallured\\Documents\\HFDFC3_IterativeCorrection\\RefMeas' + str(n) + '.has'
-    wfs.takeWavefront(100, filename = ref_file)
+    ref_file = os.path.join(fdir, 'RefCells_Meas' + str(n) + '.has')
+    wfs.takeWavefront(100, filename=ref_file)
 
     #Set optimal cell voltages
     ax.setVoltArr(opt_volts)
@@ -140,44 +163,21 @@ def measChangeFromVolts(opt_volts, n, filebase=''):
     time.sleep(2)
 
     # Now taking the activated measurement.
-    act_file = 'C:\\Users\\rallured\\Documents\\HFDFC3_IterativeCorrection\\OptVolt_Meas' + str(n) + '.has'
+    act_file = os.path.join(fdir, 'ActCells_Meas' + str(n) + '.has')
     wfs.takeWavefront(100, filename=act_file)
 
     # And returning to the grounded state for safety.
     ax.ground()
 
     # Computing the relative change from the activated state to the ground state.
-    rel_change = wfs.processHAS(act_file, ref = ref_file, type = 'P')
+    rel_change = wfs.processHAS(act_file, ref=ref_file, type='P')
 
     # And saving the measurement at the specified file path location.
     figure_filepath = filebase + '_MeasChange_Iter' + str(n) + '.fits'
     hdu = pyfits.PrimaryHDU(rel_change)
-    hdu.writeto(figure_filepath,clobber = True)
+    hdu.writeto(figure_filepath, overwrite=True)
 
     np.savetxt(filebase + '_MeasVoltApplied_Iter' + str(n) + '.txt', actual_volts)
 
     # Returning the file path location for easy reading with the metrology suite.
     return figure_filepath
-
-def readCylWFSRaw(fn):
-    """
-    Load in data from WFS measurement of cylindrical mirror.
-    Assumes that data was processed using processHAS, and loaded into
-    a .fits file.
-    Scale to microns, remove misalignments,
-    strip NaNs.
-    If rotate is set to an array of angles, the rotation angle
-    which minimizes the number of NaNs in the image after
-    stripping perimeter nans is selected.
-    Distortion is bump positive looking at concave surface.
-    Imshow will present distortion in proper orientation as if
-    viewing the concave surface.
-    """
-    #Remove NaNs and rescale
-    d = pyfits.getdata(fn)
-    d = man.stripnans(d)
-
-    # Negate to make bump positive.
-    d = -d
-
-    return d

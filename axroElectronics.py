@@ -49,7 +49,7 @@ def setChan(chan, volt=0):
     command to set voltage.
     Limit of <= 5 V is encoded into this function.
     """
-    if volt <= volt_max and volt >= 0.:
+    if volt <= volt_max and volt >= 0.0:
         dac, channel = convChan(chan)
         cstr = 'VSET %i %i %i %f' % (board_num, dac, channel, volt)
         ser.write(cstr.encode())
@@ -100,8 +100,8 @@ def setVoltChan(chan, volt=0):
 
 def readVoltArr():
     """
-    Loop through and read the voltages on all piezo cells. Return
-    vector of voltages where index matches cell number (minus one).
+    Conviencence Fuction to Loop through and read the voltages on all piezo
+    cells. Return vector of voltages where index matches cell number (minus one)
     """
     v = np.array([])
     for c in range(len(cellmap)):
@@ -114,7 +114,7 @@ def readVoltChan(chan):
     """
     return readChan(cellmap[chan-1])
 
-def init(board_num=board_num):
+def init(board=config.board_num):
     """
     Change to software directory and run initialization script.
     """
@@ -123,11 +123,11 @@ def init(board_num=board_num):
     echo()
 
     for dac in range(8):
-        cstr = 'DACOFF %i %i 0 8192' % (board_num,dac)
+        cstr = 'DACOFF %i %i 0 8192' % (board, dac)
         ser.write(cstr.encode())
         echo()
 
-        cstr = 'DACOFF %i %i 1 8192' % (board_num,dac)
+        cstr = 'DACOFF %i %i 1 8192' % (board, dac)
         ser.write(cstr.encode())
         echo()
 
