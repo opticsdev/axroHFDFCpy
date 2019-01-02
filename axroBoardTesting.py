@@ -61,7 +61,7 @@ def readChan(chan):
     Then issue read command and parse voltage from echo.
     """
     dac,channel = convChan(chan)
-    cstr = 'VREAD %i %i %i' % (board_num,dac,channel)
+    cstr = 'VREAD %i %i %i' % (board_num, dac, channel)
     ser.write(cstr.encode())
     s = echo()
     return float(s.split()[-1])
@@ -90,7 +90,7 @@ def setVoltArr(voltage):
         setChan(cellmap[c], voltage[c])
 
 
-def setVoltChan(chan,volt):
+def setVoltChan(chan, volt):
     """
     Set individual piezo cell, channel corresponds to piezo cell number
     """
@@ -112,20 +112,20 @@ def readVoltChan(chan):
     """
     return readChan(cellmap[chan])
 
-def init(board_num=board_num):
+def init(board=board_num):
     """
     Change to software directory and run initialization script.
     """
-    cstr = 'RESET %i' % (board_num)
+    cstr = 'RESET %i' % (board)
     ser.write(cstr.encode())
     echo()
 
     for dac in range(8):
-        cstr = 'DACOFF %i %i 0 8192' % (board_num,dac)
+        cstr = 'DACOFF %i %i 0 8192' % (board, dac)
         ser.write(cstr.encode())
         echo()
 
-        cstr = 'DACOFF %i %i 1 8192' % (board_num,dac)
+        cstr = 'DACOFF %i %i 1 8192' % (board, dac)
         ser.write(cstr.encode())
         echo()
 

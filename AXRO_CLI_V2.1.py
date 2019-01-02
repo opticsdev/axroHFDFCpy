@@ -11,7 +11,7 @@ from time import sleep
 import serial
 from AXRO_Command.CommandCheck import *
 from AXRO_Command.ProcessCommandFile import *
-from AXRO_Command.VetTheCommand_V3_0.py import *
+from AXRO_Command.VetTheCommand_V3_0 import *
 import config
 
 
@@ -19,9 +19,9 @@ import config
 # execfile("VetTheCommand_V3.0.py")
 # execfile("ProcessCommandFile.py")
 
-def Write_File(outfile, command_line, response):
-    outfile.write("\n\n"+command_line+"\n")
-    outfile.write(response+"\n")
+def Write_File(outfile, cmd, response):
+    outfile.write("\n\n" + cmd + "\n")
+    outfile.write(response + "\n")
 
 
 # Some inits
@@ -61,14 +61,14 @@ while command.upper() != "QUIT":
 
     elif command.upper() == "OPEN":
         filename = raw_input("Give me the name of the output file: ")
-        outfile = open(filename, "w")
+        fout = open(filename, "w")
         comment = raw_input("Give me a comment to place at the top: ")
-        outfile.write(comment+"\n")
+        fout.write(comment+"\n")
         file_open_flag = True
 
     elif command.upper() == "CLOSE":
         if file_open_flag is True:
-            outfile.close()
+            fout.close()
             file_open_flag = False
 
     elif command.upper() == "DEBUG":
@@ -90,7 +90,7 @@ while command.upper() != "QUIT":
             cmd_echo = ser.readline()
             print("Board Response is: ", cmd_echo)
             if file_open_flag == True:
-                Write_File(outfile, command_line, cmd_echo)
+                Write_File(fout, command_line, cmd_echo)
 
         else:
             print("Unauthorized command IGNORING")
@@ -102,7 +102,12 @@ while command.upper() != "QUIT":
     command_line = raw_input("Gimme a command: ")
     split_command = command_line.split()
     command = split_command[0]
-
+else:
+    # Cleanup try to close the outputing file to remove it from the buffer
+    try:
+        fout.close()
+    except NameError:
+        print("File Already Closed or Does not Exist")
 # Command was Quit so close down the serial link cleanly
 # Send the command to the Arduino so that it drops into it's wait state
 ser.write(command_line.upper().encode())

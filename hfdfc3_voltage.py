@@ -46,12 +46,12 @@ def close():
     ax.close()
 
 #Good cell map, list of good cells, where each element is cellnum
-#When measuring IFs, you would call [measureIF(c,100) for c in goodcell]
+#When measuring IFs, you would call [measureIF_ WFS(c,100...) for c in goodcell]
 
-#Influence functions
-def measureIF(cellnum, N=1, filebase='', volt=0, ftype=None):
+#Influence functions with the WFS
+def measureIF_WFS(cellnum, N=1, filebase='', volt=0, ftype=None):
     """
-    Measure the influence function of piezo cell cellnum.
+    Measure the influence function using the WFS of piezo cell cellnum.
     Measure using 100 averages per measurement, and do this N times.
     Save the results in a 3D fits file of shape (N,128,128).
     These results may then be postprocessed into an influence function
@@ -63,7 +63,6 @@ def measureIF(cellnum, N=1, filebase='', volt=0, ftype=None):
     sx = np.zeros((N, 128, 128))
     p = np.zeros((N, 128, 128))
 
-    day = datetime.date.today().strftime('%y%m%d')  # capture date for filename encoding
     for i in range(N):
         #Ensure all cells are grounded
         ax.ground()
@@ -91,6 +90,12 @@ def measureIF(cellnum, N=1, filebase='', volt=0, ftype=None):
         sx[i] = wfs.processHAS(act_file, ref=ref_file, type='X')
         p[i] = wfs.processHAS(act_file, ref=ref_file, type='P')
 
+    # Save compiled array to defined filetype
+    save_dataset(sx, sy, p, cellnum, filebase=filebase, ftype=ftype)
+
+
+def save_dataset(sx, sy, p, cellnum, filebase='', ftype='h5'):
+    day = datetime.date.today().strftime('%y%m%d')  # capture date for filename encoding
     # Write h5 file
     if ftype == 'h5':
         with h5py.File(os.path.join(filebase, day + '_IFdata'), 'a') as fin:
@@ -110,12 +115,11 @@ def measureIF(cellnum, N=1, filebase='', volt=0, ftype=None):
 
 def compileIF(filebase='', vmax=10.0, ftype='h5'):
     """
-    Runs through and applied voltage to each actuator in the AXRO board saving all data into one big file
+    Runs through and applied voltage to each actuator in the AXRO board saving
+    all data into one big file
     """
     for idx in ax.cellmap:
-        sy, sx, p = measureIF(idx, N=1, volt=vmax, filebase=filebase, ftype=ftype)
-
-
+        measureIF_WFS(idx, N=1, volt=vmax, filebase=filebase, ftype=ftype)
 
 def meanIF(filebase):
     """
@@ -133,16 +137,16 @@ def meanIF(filebase):
 
 def measureHysteresisCurve(cellnum, N, filebase):
     voltages = np.arange(0.5, 10.5, 1)
-    #voltages = np.array([1.0,3.0,5.0])
+
     for volt in voltages:
-        measureIF(cellnum, N, filebase + '_' + "{:2.1f}".format(volt).replace('.', 'p') + 'V', volt=volt)
+        measureIF_WFS(cellnum, N, filebase + '_' + "{:2.1f}".format(volt).replace('.', 'p') + 'V', volt=volt)
+
 
 def collectHysteresisData(filebase, cellnums=range(3, 112, 10), N=10):
     for cellnum in cellnums:
         measureHysteresisCurve(cellnum, N, filebase)
 
 
-########################
 def measChangeFromVolts(opt_volts, n, filebase=''):
     # First grounding everything on HFDFC3.
     ax.ground()
