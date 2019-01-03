@@ -1,3 +1,3 @@
 # axroHFDFCpy
 
-Runs the Smithsonian Astrophysical Observatory XRay Deformable Mirror System
+Runs the Smithsonian Astrophysical Observatory X-Ray Deformable Mirror System

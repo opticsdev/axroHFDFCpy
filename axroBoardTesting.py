@@ -1,7 +1,7 @@
 #!/usr/bin/env python2.7
 
-import serial
 import time
+import serial
 #import os
 import numpy as np
 from AXRO_Command.CommandCheck import CommandCheck
@@ -41,15 +41,15 @@ def encoded_init():
     """
     ProcessCommandFile(CommandCheck(), 'SetUp_DACOFF.txt', 0)
 
-def setChan(chan,volt):
+def setChan(chan, volt):
     """
     Convert the channel number into board format and then issue
     command to set voltage.
     Limit of <= abs(15 V) is encoded into this function.
     """
     if abs(volt) <= abs_volt_max:
-        dac,channel = convChan(chan)
-        cstr = 'VSET %i %i %i %f' % (board_num,dac,channel,volt)
+        dac, channel = convChan(chan)
+        cstr = 'VSET %i %i %i %f' % (board_num, dac, channel, volt)
         ser.write(cstr.encode())
         echo()
     else:
@@ -60,7 +60,7 @@ def readChan(chan):
     Convert channel into proper DAC and channel number
     Then issue read command and parse voltage from echo.
     """
-    dac,channel = convChan(chan)
+    dac, channel = convChan(chan)
     cstr = 'VREAD %i %i %i' % (board_num, dac, channel)
     ser.write(cstr.encode())
     s = echo()

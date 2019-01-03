@@ -7,11 +7,11 @@
 #                    And has the DACOFF command
 ###############################################################
 
-from time import sleep
-import serial
-from AXRO_Command.CommandCheck import *
-from AXRO_Command.ProcessCommandFile import *
-from AXRO_Command.VetTheCommand_V3_0 import *
+# from time import sleep
+# import serial
+from AXRO_Command.CommandCheck import CommandCheck
+from AXRO_Command.ProcessCommandFile import ProcessCommandFile
+from AXRO_Command.VetTheCommand_V3_0 import VetTheCommand
 import config
 
 

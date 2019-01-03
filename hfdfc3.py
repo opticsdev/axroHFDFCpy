@@ -1,12 +1,12 @@
 #!/usr/bin/env python2.7
 # Legacy from optimization setups on HFDFC3
-import numpy as np
 import glob
 import time
-import wfs
-import matplotlib.pyplot as plt
-import axroElectronics as ax
+import numpy as np
 import astropy.io.fits as pyfits
+#import matplotlib.pyplot as plt
+import axroElectronics as ax
+import wfs
 
 #import pdb
 
@@ -61,32 +61,34 @@ def measureIF(cellnum,N,filebase,volt = 10.):
         ax.ground()
 
         #Take WFS reference measurement
-        ref_file = 'C:\\Users\\rallured\\Documents\\HFDFC3_Measurements\\Ref_CellNum' + str(cellnum) + '_Meas' + str(i) + '.has'
-        wfs.takeWavefront(num, filename = ref_file) #filename='Ref_CellNum_' + str(cellnum) + '_Meas' + str(i) + '.has')
+        ref_file = 'C:\\Users\\rallured\\Documents\\HFDFC3_Measurements\\Ref_CellNum' + \
+                   str(cellnum) + '_Meas' + str(i) + '.has'
+        wfs.takeWavefront(num, filename=ref_file) #filename='Ref_CellNum_' + str(cellnum) + '_Meas' + str(i) + '.has')
 
         #Set cell voltage
-        ax.setVoltChan(cellnum,volt)
+        ax.setVoltChan(cellnum, volt)
         print(volt)
 
         print('\nTaking a nap.........\n')
         time.sleep(10)
         #Take actuated WFS measurement
-        act_file = 'C:\\Users\\rallured\\Documents\\HFDFC3_Measurements\\Act_CellNum' + str(cellnum) + '_Meas' + str(i) + '.has'
-        wfs.takeWavefront(num,filename = act_file)#filename='Act_CellNum_' + str(cellnum) + '_Meas' + str(i) + '.has')
+        act_file = 'C:\\Users\\rallured\\Documents\\HFDFC3_Measurements\\Act_CellNum' + \
+                   str(cellnum) + '_Meas' + str(i) + '.has'
+        wfs.takeWavefront(num, filename=act_file)#filename='Act_CellNum_' + str(cellnum) + '_Meas' + str(i) + '.has')
         #time.sleep(1)
 
         #Ensure all cells are grounded
         ax.ground()
 
         #Process influence function measurement
-        sy[i] = wfs.processHAS(act_file,ref=ref_file,type='Y')
-        sx[i] = wfs.processHAS(act_file,ref=ref_file,type='X')
-        p[i] = wfs.processHAS(act_file,ref=ref_file,type='P')
+        sy[i] = wfs.processHAS(act_file, ref=ref_file, type='Y')
+        sx[i] = wfs.processHAS(act_file, ref=ref_file, type='X')
+        p[i] = wfs.processHAS(act_file, ref=ref_file, type='P')
 
     #Write fits file
-    pyfits.writeto('%s_SY_%03i.fits' % (filebase,cellnum),sy, clobber = True)
-    pyfits.writeto('%s_SX_%03i.fits' % (filebase,cellnum),sx, clobber = True)
-    pyfits.writeto('%s_P_%03i.fits' % (filebase,cellnum),p, clobber = True)
+    pyfits.writeto('%s_SY_%03i.fits' % (filebase, cellnum), sy, overwrite=True)
+    pyfits.writeto('%s_SX_%03i.fits' % (filebase, cellnum), sx, overwrite=True)
+    pyfits.writeto('%s_P_%03i.fits' % (filebase, cellnum), p, overwrite=True)
 
     return sy, sx, p
 
@@ -104,15 +106,15 @@ def meanIF(filebase):
         res[i] = np.mean(data, axis=0)
     return res
 
-def measureHysteresisCurve(cellnum,N,filebase):
+def measureHysteresisCurve(cellnum, N, filebase):
     voltages = np.arange(0.5, 10.5, 1)
     #voltages = np.array([1.0,3.0,5.0])
     for volt in voltages:
         measureIF(cellnum, N, filebase + '_' + "{:2.1f}".format(volt).replace('.', 'p') + 'V', volt=volt)
 
-def collectHysteresisData(filebase, cellnums=range(3,112,10), N=10):
+def collectHysteresisData(filebase, cellnums=range(3, 112, 10), N=10):
     for cellnum in cellnums:
-        measureHysteresisCurve(cellnum,N,filebase)
+        measureHysteresisCurve(cellnum, N, filebase)
 
 
 ########################
@@ -122,7 +124,7 @@ def measChangeFromVolts(opt_volts, n, filebase=''):
 
     # Now taking the grounded reference measurement.
     ref_file = 'C:\\Users\\rallured\\Documents\\HFDFC3_IterativeCorrection\\RefMeas' + str(n) + '.has'
-    wfs.takeWavefront(100, filename = ref_file)
+    wfs.takeWavefront(100, filename=ref_file)
 
     #Set optimal cell voltages
     ax.setVoltArr(opt_volts)
@@ -143,12 +145,12 @@ def measChangeFromVolts(opt_volts, n, filebase=''):
     ax.ground()
 
     # Computing the relative change from the activated state to the ground state.
-    rel_change = wfs.processHAS(act_file, ref = ref_file, type = 'P')
+    rel_change = wfs.processHAS(act_file, ref=ref_file, type='P')
 
     # And saving the measurement at the specified file path location.
     figure_filepath = filebase + '_MeasChange_Iter' + str(n) + '.fits'
     hdu = pyfits.PrimaryHDU(rel_change)
-    hdu.writeto(figure_filepath,clobber = True)
+    hdu.writeto(figure_filepath, overwrite=True)
 
     np.savetxt(filebase + '_MeasVoltApplied_Iter' + str(n) + '.txt', actual_volts)
 
@@ -178,25 +180,26 @@ def readCylWFSRaw(fn):
 
     return d
 
-def reshapeMeasToDistMap(figure_filepath,dist_map,mask_fraction):
+def reshapeMeasToDistMap(figure_filepath, dist_map, mask_fraction):
     # Loading the as-measured correction and processing it appropriately to be stripped of
     # exterior NaNs, bump positive, and have best fit cylinder removed (like dist_map and the ifs).
     # This raw correction has its own distinct shape of order 120 by 100.
     raw_correction = readCylWFSRaw(figure_filepath)
 
     # Creating a perimeter shademask consistent with the size of the measured change.
-    meas_shade = eva.slv.createShadePerimeter(np.shape(raw_correction),axialFraction = mask_fraction,azFraction = mask_fraction)
+    meas_shade = eva.slv.createShadePerimeter(np.shape(raw_correction),
+                                              axialFraction=mask_fraction, azFraction=mask_fraction)
 
     # Now making the measured relative change directly comparable to the area of the
     # distortion map we are trying to correct by putting the shade mask in place, and
     # then interpolating to the size of dist_map.
     rel_change = np.copy(raw_correction)
     rel_change[meas_shade == 0] = np.NaN
-    rel_change = eva.man.newGridSize(rel_change,np.shape(dist_map))
+    rel_change = eva.man.newGridSize(rel_change, np.shape(dist_map))
     return rel_change
 
-def iterCorr(dist_map,ifs,perimeter,dx, \
-             filebase = '',max_volts = 10.0):
+def iterCorr(dist_map, ifs, perimeter, dx, \
+             filebase='', max_volts=10.0):
     '''
     Performs an iterative correction to the HFDFC3 mirror to converge on the best correction available to the
     distortion map provided in dist_map.
@@ -217,13 +220,13 @@ def iterCorr(dist_map,ifs,perimeter,dx, \
         return bounds
 
     # Defining the shade mask for the area we wish to iteratively correct.
-    mask_fraction = perimeter*2/101.6
+    mask_fraction = perimeter * 2 / 101.6
     shademask = eva.slv.createShadePerimeter(np.shape(ifs[0]), axialFraction=mask_fraction, azFraction=mask_fraction)
 
     # Saving the distortion map at the same format as the correction.
-    dist_map_resized = man.newGridSize(dist_map,np.shape(ifs[0]))
+    dist_map_resized = man.newGridSize(dist_map, np.shape(ifs[0]))
     hdu = pyfits.PrimaryHDU(dist_map_resized)
-    hdu.writeto(filebase + '_DistortionToCorrect_Iter' + str(n) + '.fits', clobber=True)
+    hdu.writeto(filebase + '_DistortionToCorrect_Iter' + str(n) + '.fits', overwrite=True)
 
     # Performing the first computation of the correction to the distortion map,
     # and saving the first set of optimal voltages. "correction" will be masked,
@@ -237,7 +240,7 @@ def iterCorr(dist_map,ifs,perimeter,dx, \
 
     # Saving the computed correction.
     hdu = pyfits.PrimaryHDU(correction)
-    hdu.writeto(filebase + '_Correction_Iter' + str(n) + '.fits', clobber=True)
+    hdu.writeto(filebase + '_Correction_Iter' + str(n) + '.fits', overwrite=True)
     print('CORRECTION CALCULATED')
 
     # Measuring the relative change induced by applying the calculated set of optimal voltages.
@@ -255,13 +258,13 @@ def iterCorr(dist_map,ifs,perimeter,dx, \
         residual = dist_map + rel_change
 
         hdu = pyfits.PrimaryHDU(residual)
-        hdu.writeto(filebase + '_DistortionToCorrect_Iter' + str(n) + '.fits', clobber=True)
+        hdu.writeto(filebase + '_DistortionToCorrect_Iter' + str(n) + '.fits', overwrite=True)
 
         iter_corr, volt_adjust = eva.correctHFDFC3(residual, ifs, shade=shademask,
                                                    dx=dx, bounds=make_bounds(opt_volts))
 
         hdu = pyfits.PrimaryHDU(iter_corr)
-        hdu.writeto(filebase + '_Correction_Iter' + str(n) + '.fits', clobber=True)
+        hdu.writeto(filebase + '_Correction_Iter' + str(n) + '.fits', overwrite=True)
 
         opt_volts = opt_volts + volt_adjust
         np.savetxt(filebase + '_OptVolts_Iter' + str(n) + '.txt', opt_volts)

@@ -1,12 +1,12 @@
 #!/usr/bin/env python2.7
-
-import numpy.ctypeslib as npct
+import os
+import glob
 import ctypes
+import numpy.ctypeslib as npct
+
 import numpy as np
-import matplotlib.pyplot as plt
-import os,glob
 import astropy.io.fits as pyfits
-import pdb
+
 
 #Load in DLL
 dlldir = 'C:\\Users\\WFS\\Documents\\Visual Studio 2015\\Projects\\WFS3\\Debug'
@@ -26,13 +26,13 @@ cdoub = ctypes.c_double
 
 #Set up functions
 lib.processFile.restype = None
-lib.processFile.argtypes = [array_1d_double,cpoint,cpoint,cbool,cbool,\
-                            cbool,cbool,cchar]
-lib.takeWavefront.restype=cdoub
-lib.takeWavefront.argtypes = [cint,cint,cpoint,cbool,cpoint,cbool,cpoint,cbool]
-lib.takeImage.restype=cdoub
-lib.takeImage.argtypes = [cint,cint,cpoint,cbool,cpoint,cbool]
-lib.saturationLevel.restype=cdoub
+lib.processFile.argtypes = [array_1d_double, cpoint, cpoint, cbool, cbool,\
+                            cbool, cbool, cchar]
+lib.takeWavefront.restype = cdoub
+lib.takeWavefront.argtypes = [cint, cint, cpoint, cbool, cpoint, cbool, cpoint, cbool]
+lib.takeImage.restype = cdoub
+lib.takeImage.argtypes = [cint, cint, cpoint, cbool, cpoint, cbool]
+lib.saturationLevel.restype = cdoub
 lib.saturationLevel.argtypes = [cpoint]
 
 #Create a global exposure time variable
@@ -55,7 +55,7 @@ def close():
 def getSat(filename):
     return lib.saturationLevel(filename)
 
-def processHAS(filename, ref=None, dbl=True, nb=True, notilt=True, type='P'):
+def processHAS(filename, ref=None, dbl=True, nb=True, notilt=True, ptype='P'):
     """
     Load a .has file and apply the desired processing
     If ref is not none, the .has file pointed to will be
@@ -67,15 +67,15 @@ def processHAS(filename, ref=None, dbl=True, nb=True, notilt=True, type='P'):
     type='X' returns X slopes
     type='Y' returns Y slopes
     """
-    slopes = np.zeros((128*128))
+    slopemap = np.zeros((128*128))
     if ref is None:
-        ref,flag = '', False
+        ref, flag = '', False
     else:
-        flag=True
-    lib.processFile(slopes,filename,ref,flag,dbl,nb,notilt,type)
-    return slopes.reshape((128, 128))
+        flag = True
+    lib.processFile(slopemap, filename, ref, flag, dbl, nb, notilt, ptype)
+    return slopemap.reshape((128, 128))
 
-def takeWavefront(num,filename=None,bg=None,img=None):
+def takeWavefront(num, filename=None, bg=None, img=None):
     """
     Takes a wavefront measurement and saves the result to a .has file.
     For optional BG subtraction, set bg to a .hmg filename
@@ -101,7 +101,7 @@ def takeWavefront(num,filename=None,bg=None,img=None):
     else:
         flag2 = True
     print(exptime)
-    cursat = lib.takeWavefront(int(num), int(exptime), filename,flag2,\
+    cursat = lib.takeWavefront(int(num), int(exptime), filename, flag2,\
                                 bg, flag, img, iflag)
     print(cursat)
 
@@ -158,7 +158,7 @@ def setExposure(bg=None):
 def testRepeatability(nb,N):
     filenames = ['Repeatability%04i.has' % i for i in range(N)]
     #Take the data!
-    sat = [takeWavefront(nb,filename=f,\
+    sat = [takeWavefront(nb, filename=f,\
                          img=f.split('.')[0]+'.himg') for f in filenames]
     return sat
 
@@ -167,20 +167,20 @@ def convertRepeatability():
     filenames.sort()
 
     for i in range(np.size(filenames)-1):
-        slopesx = processHAS(filenames[i+1], ref=filenames[i], type='X')
-        slopesy = processHAS(filenames[i+1], ref=filenames[i], type='Y')
-        pyfits.writeto('SlopesY%04i.fits' % i, slopesy, clobber=True)
-        pyfits.writeto('SlopesX%04i.fits' % i, slopesx, clobber=True)
+        slopesx = processHAS(filenames[i+1], ref=filenames[i], ptype='X')
+        slopesy = processHAS(filenames[i+1], ref=filenames[i], ptype='Y')
+        pyfits.writeto('SlopesY%04i.fits' % i, slopesy, overwrite=True)
+        pyfits.writeto('SlopesX%04i.fits' % i, slopesx, overwrite=True)
     return
 
-def repeatability(nb,N):
-    sat = testRepeatability(nb,N)
+def repeatability(nb, N):
+    sat = testRepeatability(nb, N)
     convertRepeatability()
     fn = glob.glob('SlopesX*')
     fn.sort()
     slopesx = [getdata(f) for f in fn]
     rmsx = [rms(s) for s in slopesx]
-    return rmsx,sat
+    return rmsx, sat
 
 def getdata(f):
     fl = pyfits.open(f)

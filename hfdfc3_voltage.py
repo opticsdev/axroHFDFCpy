@@ -86,13 +86,56 @@ def measureIF_WFS(cellnum, N=1, filebase='', volt=0, ftype=None):
         ax.ground()
 
         #Process influence function measurement
-        sy[i] = wfs.processHAS(act_file, ref=ref_file, type='Y')
-        sx[i] = wfs.processHAS(act_file, ref=ref_file, type='X')
-        p[i] = wfs.processHAS(act_file, ref=ref_file, type='P')
+        sy[i] = wfs.processHAS(act_file, ref=ref_file, ptype='Y')
+        sx[i] = wfs.processHAS(act_file, ref=ref_file, ptype='X')
+        p[i] = wfs.processHAS(act_file, ref=ref_file, ptype='P')
 
     # Save compiled array to defined filetype
     save_dataset(sx, sy, p, cellnum, filebase=filebase, ftype=ftype)
 
+
+#Influence functions with the WFS
+def measureIF_Int(cellnum, N=1, filebase='', volt=0, ftype=None):
+    """
+    Measure the influence function using the WFS of piezo cell cellnum.
+    Measure using 100 averages per measurement, and do this N times.
+    Save the results in a 3D fits file of shape (N,128,128).
+    These results may then be postprocessed into an influence function
+    fits or h5 file.
+
+    """
+    num = 100
+    sy = np.zeros((N, 128, 128))
+    sx = np.zeros((N, 128, 128))
+    p = np.zeros((N, 128, 128))
+
+    for i in range(N):
+        #Ensure all cells are grounded
+        ax.ground()
+
+        #Take WFS reference measurement
+        ref_file = os.path.join(fdir, 'Ref_CellNum' + str(cellnum) + '_Meas' + str(i) + '.h5')
+        intcom.takeWavefront(num, filename=ref_file)
+
+        #Set cell voltage
+        ax.setVoltChan(cellnum, volt)
+        print(volt)
+
+        print('\nTaking a nap.........\n')
+        time.sleep(2)
+        #Take actuated WFS measurement
+        act_file = os.path.join(fdir, 'Act_CellNum' + str(cellnum) + '_Meas' + str(i) + '.h5')
+        intcom.takeWavefront(num, filename=act_file)#filename='Act_CellNum_' + str(cellnum) + '_Meas' + str(i) + '.has')
+        #time.sleep(1)
+
+        #Ensure all cells are grounded
+        ax.ground()
+
+        #Process influence function measurement
+
+
+    # Save compiled array to defined filetype
+    save_dataset(sx, sy, p, cellnum, filebase=filebase, ftype=ftype)
 
 def save_dataset(sx, sy, p, cellnum, filebase='', ftype='h5'):
     day = datetime.date.today().strftime('%y%m%d')  # capture date for filename encoding
@@ -113,10 +156,18 @@ def save_dataset(sx, sy, p, cellnum, filebase='', ftype='h5'):
 
     return sy, sx, p
 
-def compileIF(filebase='', vmax=10.0, ftype='h5'):
+def compileIF_WFS(filebase='', vmax=10.0, ftype='h5'):
     """
     Runs through and applied voltage to each actuator in the AXRO board saving
-    all data into one big file
+    all WFS data into one big file
+    """
+    for idx in ax.cellmap:
+        measureIF_WFS(idx, N=1, volt=vmax, filebase=filebase, ftype=ftype)
+
+def compileIF_INT(filebase='', vmax=10.0, ftype='h5'):
+    """
+    Runs through and applied voltage to each actuator in the AXRO board saving
+    all 4D Interferometer Wavefront data into one big file.
     """
     for idx in ax.cellmap:
         measureIF_WFS(idx, N=1, volt=vmax, filebase=filebase, ftype=ftype)
