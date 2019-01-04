@@ -6,6 +6,8 @@ import glob
 import os
 import time
 import datetime
+import ast
+import cv2
 import h5py
 #import matplotlib.pyplot as plt
 import numpy as np
@@ -13,6 +15,7 @@ import astropy.io.fits as pyfits
 import config
 import wfs
 import axroElectronics as ax
+
 #import pdb
 
 # import axroOptimization.evaluateMirrors as eva
@@ -95,11 +98,11 @@ def measureIF_WFS(cellnum, N=1, filebase='', volt=0, ftype=None):
 
 
 #Influence functions with the WFS
-def measureIF_Int(cellnum, N=1, filebase='', volt=0, ftype=None):
+def measureIF_4D(cellnum, N=1, filebase='', volt=0, ftype=None):
     """
     Measure the influence function using the WFS of piezo cell cellnum.
     Measure using 100 averages per measurement, and do this N times.
-    Save the results in a 3D fits file of shape (N,128,128).
+    Save the results in a h5 file of shape (N,128,128).
     These results may then be postprocessed into an influence function
     fits or h5 file.
 
@@ -136,6 +139,87 @@ def measureIF_Int(cellnum, N=1, filebase='', volt=0, ftype=None):
 
     # Save compiled array to defined filetype
     save_dataset(sx, sy, p, cellnum, filebase=filebase, ftype=ftype)
+
+def load_h5(fname, surfmap=True):
+    """ Loads a 4D .h5 interferogram file from a file location (local or network drive)"""
+    filenames = glob.glob(fname)
+    print("Files found: {}".format(filenames))
+    fin = h5py.File(filenames[0])
+    meas = fin['measurement0']  # Wavefront data located in 'measurement0'
+    opdsets = meas['genraw']
+    wvl = opdsets.attrs['wavelength']
+    wvl = float(wvl[:-3])
+    # Get the x pixel spacing
+    try:
+        iscale = float(opdsets.attrs['xpix'][:-3])
+    except TypeError:
+        iscale = 0.0
+        print("No Calibration Dimensioning Found in H5 file")
+    # Return either surface map or fringe map
+    if surfmap is True:
+        data = np.asarray(opdsets['data'])
+        data[data > 1e10] = np.nan  # Eliminates "bad" data sets to NAN
+        data *= wvl * mask_data(filenames[0])
+    else:
+        data = np.asarray(meas['reserve_interferogram']['frame4']['data'])
+    return data, wvl, iscale
+
+def center_circle_mask(points, arrayshape=(480, 640), maskinside=True):
+    """creates a boolean masking array of a circle"""
+    mask = np.zeros(arrayshape)
+    points = [float(ii) for ii in points.split(', ')]
+    center_col = round(points[0] + (points[2]/2))
+    center_row = round(points[1] + (points[3]/2))
+    Y, X = np.ogrid[:arrayshape[0], :arrayshape[1]]
+
+    dist = np.sqrt((X - center_col)**2 + (Y - center_row)**2)
+    if maskinside is False:
+        mask = dist <= points[2]/2
+    else:
+        mask = dist >= points[2]/2
+    return mask * 1
+
+def rect_mask(points, arrayshape=(480, 640), maskinside=True):
+    mask = np.zeros(arrayshape)
+
+    points = ast.literal_eval(points)
+    polygon = np.array(points[:-1], dtype=np.int32)
+
+    mask = (cv2.fillPoly(mask, [polygon], 1)).astype(np.int8)
+
+    if maskinside is True:
+        mask ^= 1
+    return mask
+
+def mask_data(fname):
+    """find Interferometer masks"""
+    filenames = glob.glob(fname)
+    h5file = h5py.File(filenames[0])
+    masklist = h5file['measurement0']['maskshapes']
+    maskshape = np.asarray(h5file['measurement0']['genraw']['data']).shape
+    mask = np.ones(maskshape)
+
+    if 'Analysis' in masklist:
+        print('Analysis Masks found: {}'.format(list(masklist['Analysis'].attrs)))
+        for maskitem in masklist['Analysis'].attrs.values():
+            maskitem = maskitem.decode().split('|')
+            if maskitem[0] == 'circle':
+                if 'Mask Inside' in maskitem[2]:
+                    mask *= center_circle_mask(maskitem[1], maskshape, maskinside=True)
+                elif 'Mask Outside' in maskitem[2]:
+                    mask *= center_circle_mask(maskitem[1], maskshape, maskinside=False)
+                elif 'Pass Inside' in maskitem[2]:
+                    mask += center_circle_mask(maskitem[1], maskshape, maskinside=False)
+            elif maskitem[0] == 'rect':
+                if 'Mask Inside' in maskitem[2]:
+                    mask *= rect_mask(maskitem[1], maskshape, maskinside=True)
+                elif 'Mask Outside' in maskitem[2]:
+                    mask *= rect_mask(maskitem[1], maskshape, maskinside=False)
+                elif 'Pass Inside' in maskitem[2]:
+                    mask += rect_mask(maskitem[1], maskshape, maskinside=False)
+    mask = mask.astype(np.bool)*1.0
+    mask[mask == 0] = np.nan
+    return mask
 
 def save_dataset(sx, sy, p, cellnum, filebase='', ftype='h5'):
     day = datetime.date.today().strftime('%y%m%d')  # capture date for filename encoding
@@ -225,7 +309,7 @@ def measChangeFromVolts(opt_volts, n, filebase=''):
     ax.ground()
 
     # Computing the relative change from the activated state to the ground state.
-    rel_change = wfs.processHAS(act_file, ref=ref_file, type='P')
+    rel_change = wfs.processHAS(act_file, ref=ref_file, ptype='P')
 
     # And saving the measurement at the specified file path location.
     figure_filepath = filebase + '_MeasChange_Iter' + str(n) + '.fits'
