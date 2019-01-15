@@ -7,14 +7,15 @@ import os
 import time
 import datetime
 import ast
-import cv2
 import h5py
-#import matplotlib.pyplot as plt
 import numpy as np
 import astropy.io.fits as pyfits
+import cv2
+#import matplotlib.pyplot as plt
 import config
 import wfs
 import axroElectronics as ax
+import connect_client as intcom
 
 #import pdb
 
@@ -94,11 +95,11 @@ def measureIF_WFS(cellnum, N=1, filebase='', volt=0, ftype=None):
         p[i] = wfs.processHAS(act_file, ref=ref_file, ptype='P')
 
     # Save compiled array to defined filetype
-    save_dataset(sx, sy, p, cellnum, filebase=filebase, ftype=ftype)
+    save_dataset_wfs(sx, sy, p, cellnum, filebase=filebase, ftype=ftype)
 
 
 #Influence functions with the WFS
-def measureIF_4D(cellnum, N=1, filebase='', volt=0, ftype=None):
+def measureIF_4D(cellnum, N=1, filebase='', volt=0, ftype='h5'):
     """
     Measure the influence function using the WFS of piezo cell cellnum.
     Measure using 100 averages per measurement, and do this N times.
@@ -107,10 +108,7 @@ def measureIF_4D(cellnum, N=1, filebase='', volt=0, ftype=None):
     fits or h5 file.
 
     """
-    num = 100
-    sy = np.zeros((N, 128, 128))
-    sx = np.zeros((N, 128, 128))
-    p = np.zeros((N, 128, 128))
+    num = 32  # num frames avg
 
     for i in range(N):
         #Ensure all cells are grounded
@@ -129,16 +127,32 @@ def measureIF_4D(cellnum, N=1, filebase='', volt=0, ftype=None):
         #Take actuated WFS measurement
         act_file = os.path.join(fdir, 'Act_CellNum' + str(cellnum) + '_Meas' + str(i) + '.h5')
         intcom.takeWavefront(num, filename=act_file)#filename='Act_CellNum_' + str(cellnum) + '_Meas' + str(i) + '.has')
-        #time.sleep(1)
-
+        time.sleep(1)
         #Ensure all cells are grounded
         ax.ground()
+        refdata, _, _ = load_h5(ref_file)
+        actdata, _, _ = load_h5(act_file)
+
+        # Save to a composite h5 file of the reference subtracted data
+        save_dataset_4d(actdata-refdata, cellnum=cellnum, filebase=filebase, ftype=ftype)
 
         #Process influence function measurement
+def save_dataset_4d(data, cellnum, filebase='', ftype='h5'):
+    day = datetime.date.today().strftime('%y%m%d')  # capture date for filename encoding
+    # Write h5 file
+    if ftype == 'h5':
+        with h5py.File(os.path.join(filebase, day + '_IFdata'), 'a') as fin:
+            group = fin.create_group('Actuator %s' % cellnum)
+            group.create_dataset('wfe', data=data)
+            group.attr['actuator'] = cellnum
+
+    #Write fits file
+    elif ftype == 'fits':
+        pyfits.writeto('%s_WFE_%03i.fits' % (filebase, cellnum), data, overwrite=True)
 
 
     # Save compiled array to defined filetype
-    save_dataset(sx, sy, p, cellnum, filebase=filebase, ftype=ftype)
+    #save_dataset(sx, sy, p, cellnum, filebase=filebase, ftype=ftype)
 
 def load_h5(fname, surfmap=True):
     """ Loads a 4D .h5 interferogram file from a file location (local or network drive)"""
@@ -147,7 +161,7 @@ def load_h5(fname, surfmap=True):
     fin = h5py.File(filenames[0])
     meas = fin['measurement0']  # Wavefront data located in 'measurement0'
     opdsets = meas['genraw']
-    wvl = opdsets.attrs['wavelength']
+    wvl = opdsets.attrs['wavelength'][:]
     wvl = float(wvl[:-3])
     # Get the x pixel spacing
     try:
@@ -221,7 +235,7 @@ def mask_data(fname):
     mask[mask == 0] = np.nan
     return mask
 
-def save_dataset(sx, sy, p, cellnum, filebase='', ftype='h5'):
+def save_dataset_wfs(sx, sy, p, cellnum, filebase='', ftype='h5'):
     day = datetime.date.today().strftime('%y%m%d')  # capture date for filename encoding
     # Write h5 file
     if ftype == 'h5':

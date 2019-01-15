@@ -155,7 +155,7 @@ def setExposure(bg=None):
         exptime = exptime * .675/cursat
     return setExposure(bg=bg)
 
-def testRepeatability(nb,N):
+def testRepeatability(nb, N):
     filenames = ['Repeatability%04i.has' % i for i in range(N)]
     #Take the data!
     sat = [takeWavefront(nb, filename=f,\
@@ -171,7 +171,6 @@ def convertRepeatability():
         slopesy = processHAS(filenames[i+1], ref=filenames[i], ptype='Y')
         pyfits.writeto('SlopesY%04i.fits' % i, slopesy, overwrite=True)
         pyfits.writeto('SlopesX%04i.fits' % i, slopesx, overwrite=True)
-    return
 
 def repeatability(nb, N):
     sat = testRepeatability(nb, N)
